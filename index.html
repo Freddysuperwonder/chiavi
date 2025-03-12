@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Chiavi in Magazzino</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .centered-text {
+            text-align: center;
+            color: blue;
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+    <script>
+        // Save data to local storage
+        function saveToLocalStorage() {
+            const data = {
+                case: getCaseData(),
+                collaboratori: getCollaboratoriData(),
+                assegnazioni: getAssegnazioniData(),
+                storico: getStoricoData()
+            };
+            localStorage.setItem('chiaviData', JSON.stringify(data));
+        }
+
+        // Load data from local storage
+        function loadFromLocalStorage() {
+            const data = JSON.parse(localStorage.getItem('chiaviData'));
+            if (data) {
+                setCaseData(data.case);
+                setCollaboratoriData(data.collaboratori);
+                setAssegnazioniData(data.assegnazioni);
+                setStoricoData(data.storico);
+            }
+        }
+
+        // Call loadFromLocalStorage on page load
+        window.onload = function() {
+            loadFromLocalStorage();
+        };
+
+        // Add event listeners to save data on changes
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input, select').forEach(element => {
+                element.addEventListener('change', saveToLocalStorage);
+            });
+            document.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', saveToLocalStorage);
+            });
+        });
+
+        function getCaseData() {
+            const caseData = [];
+            const rows = document.querySelectorAll('#caseTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                caseData.push({
+                    id: row.getAttribute('data-id'),
+                    nome: cells[0].innerText,
+                    chiaviInUfficio: cells[1].innerText,
+                    chiaviInCasa: cells[2].innerText
+                });
+            });
+            return caseData;
+        }
+
+        function getCollaboratoriData() {
+            const collaboratoriData = [];
+            const rows = document.querySelectorAll('#collaboratoriTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                collaboratoriData.push({
+                    id: row.getAttribute('data-id'),
+                    nome: cells[0].innerText
+                });
+            });
+            return collaboratoriData;
+        }
+
+        function getAssegnazioniData() {
+            const assegnazioniData = [];
+            const rows = document.querySelectorAll('#assegnazioniTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                assegnazioniData.push({
+                    id: cells[0].innerText,
+                    casa: cells[1].innerText,
+                    collaboratore: cells[2].innerText,
+                    dataAssegnazione: cells[3].innerText,
+                    quantitaAssegnata: cells[4].innerText
+                });
+            });
+            return assegnazioniData;
+        }
+
+        function getStoricoData() {
+            const storicoData = [];
+            const rows = document.querySelectorAll('#storicoTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                storicoData.push({
+                    id: cells[0].innerText,
+                    casa: cells[1].innerText,
+                    collaboratore: cells[2].innerText,
+                    dataAssegnazione: cells[3].innerText,
+                    dataRiconsegna: cells[4].innerText
+                });
+            });
+            return storicoData;
+        }
+
+        function setCaseData(data) {
+            const tbody = document.querySelector('#caseTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(casa => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', casa.id);
+                row.innerHTML = `
+                    <td>${casa.nome}</td>
+                    <td>${casa.chiaviInUfficio}</td>
+                    <td>${casa.chiaviInCasa}</td>
+                    <td>
+                        <button onclick="editCasa('${casa.id}')">Modifica</button>
+                        <button onclick="deleteCasa('${casa.id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setCollaboratoriData(data) {
+            const tbody = document.querySelector('#collaboratoriTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(collaboratore => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', collaboratore.id);
+                row.innerHTML = `
+                    <td>${collaboratore.nome}</td>
+                    <td>
+                        <button onclick="deleteCollaboratore('${collaboratore.id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setAssegnazioniData(data) {
+            const tbody = document.querySelector('#assegnazioniTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(assegnazione => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${assegnazione.id}</td>
+                    <td>${assegnazione.casa}</td>
+                    <td>${assegnazione.collaboratore}</td>
+                    <td>${assegnazione.dataAssegnazione}</td>
+                    <td>${assegnazione.quantitaAssegnata}</td>
+                    <td>
+                        <button onclick="returnKey('${assegnazione.casa}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setStoricoData(data) {
+            const tbody = document.querySelector('#storicoTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.id}</td>
+                    <td>${record.casa}</td>
+                    <td>${record.collaboratore}</td>
+                    <td>${record.dataAssegnazione}</td>
+                    <td>${record.dataRiconsegna}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="#" onclick="showPage('home')">HOME</a></li>
+            <li><a href="#" onclick="showPage('case')">Case</a></li>
+            <li><a href="#" onclick="showPage('collaboratori')">Collaboratori</a></li>
+            <li><a href="#" onclick="showPage('assegnazioni')">Assegnazioni</a></li>
+            <li><a href="#" onclick="showPage('storico')">Storico</a></li>
+            <li><a href="#" onclick="showPage('dati')">Dati</a></li>
+        </ul>
+    </nav>
+    <div id="home" class="page">
+        <h1 class="centered-text">ARCHIVIO<br>CHIAVI<br>WONDER WHERE TO STAY</h1>
+        <h2 class="centered-text">Vers. 6.2, by Federico Meliconi</h2>
+    </div>
+    <div id="case" class="page" style="display: none;">
+        <div class="container">
+            <div class="left-column">
+                <h2>Case</h2>
+                <table id="caseTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Chiavi in Ufficio</th>
+                            <th>Chiavi in Casa</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <button onclick="showAddCasaForm()">Aggiungi Casa</button>
+                <div id="addCasaForm" class="form-container" style="display: none;">
+                    <label for="newCasaNome">Nome Casa:</label>
+                    <input type="text" id="newCasaNome" placeholder="Nome Casa" onkeypress="handleKeyPress(event, addCasa)">
+                    <button onclick="addCasa()">Conferma Aggiunta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="collaboratori" class="page" style="display: none;">
+        <div class="container">
+            <div class="right-column">
+                <h2>Collaboratori</h2>
+                <table id="collaboratoriTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <button onclick="showAddCollaboratoreForm()">Aggiungi Collaboratore</button>
+                <div id="addCollaboratoreForm" class="form-container" style="display: none;">
+                    <label for="newCollaboratoreNome">Nome Collaboratore:</label>
+                    <input type="text" id="newCollaboratoreNome" placeholder="Nome Collaboratore">
+                    <button onclick="addCollaboratore()">Conferma Aggiunta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="assegnazioni" class="page" style="display: none;">
+        <div class="container">
+            <div class="right-column">
+                <h2>Assegnazioni</h2>
+                <table id="assegnazioniTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Casa</th>
+                            <th>Collaboratore</th>
+                            <th>Data Assegnazione</th>
+                            <th>Quantità Assegnata</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <button onclick="showAssegnaChiaveForm()">Assegna Chiave</button>
+                <div id="assegnaChiaveForm" class="form-container" style="display: none;">
+                    <label for="casaSelect">Casa:</label>
+                    <select id="casaSelect" title="Seleziona Casa"></select>
+                    <label for="collaboratoreSelect">Collaboratore:</label>
+                    <select id="collaboratoreSelect" title="Seleziona Collaboratore"></select>
+                    <label for="quantitaAssegnata">Quantità Assegnata:</label>
+                    <input type="number" id="quantitaAssegnata" value="1" readonly title="Quantità Assegnata">
+                    <button onclick="assegnaChiave()">Conferma Assegnazione</button>
+                </div>
+                <div id="reportSection" class="report-section" style="display: none;">
+                    <h3>Report Assegnazione</h3>
+                    <div id="reportContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="storico" class="page" style="display: none;">
+        <div class="container">
+            <div class="storico-section">
+                <h2>Storico Assegnazioni</h2>
+                <div class="filters">
+                    <label for="searchCasa">Cerca Casa:</label>
+                    <input type="text" id="searchCasa" oninput="filterStorico()">
+                    <br><br>
+                    <label for="sortCriteria">Filtra visualizzazione per:</label>
+                    <select id="sortCriteria" onchange="sortStorico(this.value)">
+                        <option value="casa">Casa</option>
+                        <option value="collaboratore">Collaboratore</option>
+                        <option value="dataAssegnazione">Data Assegnazione</option>
+                        <option value="dataRiconsegna">Data Riconsegna</option>
+                    </select>
+                </div>
+                <table id="storicoTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Casa</th>
+                            <th>Collaboratore</th>
+                            <th>Data Assegnazione</th>
+                            <th>Data Riconsegna</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="dati" class="page" style="display: none;">
+        <div class="container">
+            <div class="data-section">
+                <h2>Dati</h2>
+                <button onclick="exportData()">Salva</button>
+                <button onclick="downloadDataAsJson()">Download JSON</button>
+                <label for="fileInput">Carica File:</label>
+                <input type="file" id="fileInput" style="display: none;" onchange="loadData(event)" title="Seleziona un file">
+                <button onclick="document.getElementById('fileInput').click()">Carica da File</button>
+                <div id="syncStatus" class="sync-status">Stato sincronizzazione: <span id="syncStatusText">In attesa...</span></div>
+                <br><br>
+                <label for="excelInput">INSERISCI CASE DA FILE EXCELL:</label>
+                <input type="file" id="excelInput" style="display: none;" onchange="loadCaseFromExcel(event)" title="Seleziona un file Excel">
+                <button onclick="document.getElementById('excelInput').click()">Carica Case da Excel</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script>
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                page.style.display = page.id === pageId ? 'block' : 'none';
+            });
+        }
+
+        function showAddCasaForm() {
+            document.getElementById('addCasaForm').style.display = 'block';
+        }
+
+        function addCasa() {
+            const nome = document.getElementById('newCasaNome').value;
+
+            if (nome) {
+                const id = Date.now().toString(); // Generate a unique ID based on the current timestamp
+                const tbody = document.querySelector('#caseTable tbody');
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', id);
+                row.innerHTML = `
+                    <td>${nome}</td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td>
+                        <button onclick="editCasa('${id}')">Modifica</button>
+                        <button onclick="deleteCasa('${id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                sortTableAlphabetically('#caseTable');
+
+                document.getElementById('addCasaForm').style.display = 'none';
+                document.getElementById('newCasaNome').value = '';
+            } else {
+                alert('Compila tutti i campi');
+            }
+        }
+
+        function deleteCasa(id) {
+            const row = document.querySelector(`#caseTable tbody tr[data-id="${id}"]`);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function editCasa(id) {
+            const row = document.querySelector(`#caseTable tbody tr[data-id="${id}"]`);
+            if (row) {
+                const cells = row.querySelectorAll('td');
+                const nome = prompt('Modifica Nome:', cells[0].innerText);
+                const chiaviInUfficio = prompt('Modifica Chiavi in Ufficio:', cells[1].innerText);
+                const chiaviInCasa = prompt('Modifica Chiavi in Casa:', cells[2].innerText);
+
+                if (nome !== null) cells[0].innerText = nome;
+                if (chiaviInUfficio !== null) cells[1].innerText = chiaviInUfficio;
+                if (chiaviInCasa !== null) cells[2].innerText = chiaviInCasa;
+            }
+        }
+
+        function showAddCollaboratoreForm() {
+            document.getElementById('addCollaboratoreForm').style.display = 'block';
+        }
+
+        function addCollaboratore() {
+            const nome = document.getElementById('newCollaboratoreNome').value;
+
+            if (nome) {
+                const id = Date.now().toString(); // Generate a unique ID based on the current timestamp
+                const tbody = document.querySelector('#collaboratoriTable tbody');
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', id);
+                row.innerHTML = `
+                    <td>${nome}</td>
+                    <td>
+                        <button onclick="deleteCollaboratore('${id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                sortTableAlphabetically('#collaboratoriTable');
+
+                document.getElementById('addCollaboratoreForm').style.display = 'none';
+                document.getElementById('newCollaboratoreNome').value = '';
+            } else {
+                alert('Compila tutti i campi');
+            }
+        }
+
+        function deleteCollaboratore(id) {
+            const row = document.querySelector(`#collaboratoriTable tbody tr[data-id="${id}"]`);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function showAssegnaChiaveForm() {
+            populateDropdowns();
+            document.getElementById('assegnaChiaveForm').style.display = 'block';
+        }
+
+        function assegnaChiave() {
+            const casaSelect = document.getElementById('casaSelect');
+            const collaboratoreSelect = document.getElementById('collaboratoreSelect');
+            const quantitaAssegnata = document.getElementById('quantitaAssegnata').value;
+            const dataAssegnazione = new Date().toLocaleString();
+
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaSelect.value}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                if (parseInt(chiaviInUfficioCell.innerText) === 0) {
+                    alert('CHIAVI ESAURITE');
+                    return;
+                }
+            }
+
+            const reportContent = `
+                <p>Casa: ${casaSelect.options[casaSelect.selectedIndex].text}</p>
+                <p>Collaboratore: ${collaboratoreSelect.options[collaboratoreSelect.selectedIndex].text}</p>
+                <p>Data Assegnazione: ${dataAssegnazione}</p>
+                <p>Quantità Assegnata: ${quantitaAssegnata}</p>
+                <button onclick="convalidaAssegnazione('${casaSelect.value}', '${collaboratoreSelect.value}', '${dataAssegnazione}', ${quantitaAssegnata})">Convalida</button>
+            `;
+            document.getElementById('reportContent').innerHTML = reportContent;
+            document.getElementById('reportSection').style.display = 'block';
+
+            document.getElementById('assegnaChiaveForm').style.display = 'none';
+        }
+
+        function convalidaAssegnazione(casaId, collaboratoreId, dataAssegnazione, quantitaAssegnata) {
+            const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${Date.now()}</td>
+                <td>${document.querySelector(`#casaSelect option[value="${casaId}"]`).text}</td>
+                <td>${document.querySelector(`#collaboratoreSelect option[value="${collaboratoreId}"]`).text}</td>
+                <td>${dataAssegnazione}</td>
+                <td>${quantitaAssegnata}</td>
+                <td>
+                    <button onclick="returnKey('${casaId}', '${dataAssegnazione}')">Riconsegna</button>
+                </td>
+            `;
+            assegnazioniTable.appendChild(row);
+
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) - quantitaAssegnata;
+            }
+
+            const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
+            const storicoRow = document.createElement('tr');
+            storicoRow.innerHTML = `
+                <td>${Date.now()}</td>
+                <td>${document.querySelector(`#casaSelect option[value="${casaId}"]`).text}</td>
+                <td>${document.querySelector(`#collaboratoreSelect option[value="${collaboratoreId}"]`).text}</td>
+                <td>${dataAssegnazione}</td>
+                <td></td>
+            `;
+            storicoTable.appendChild(storicoRow);
+
+            document.getElementById('reportSection').style.display = 'none';
+        }
+
+        function returnKey(casaId, dataAssegnazione) {
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
+            }
+
+            const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
+            const rows = storicoTable.querySelectorAll('tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells[1].innerText === document.querySelector(`#casaSelect option[value="${casaId}"]`).text && cells[3].innerText === dataAssegnazione) {
+                    cells[4].innerText = new Date().toLocaleString();
+                }
+            });
+
+            // Remove the returned key's record from the "assegnazioni" section
+            const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
+            const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
+            assegnazioniRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells[1].innerText === document.querySelector(`#casaSelect option[value="${casaId}"]`).text && cells[3].innerText === dataAssegnazione) {
+                    row.remove();
+                }
+            });
+        }
+
+        function exportData() {
+            const data = {
+                case: getCaseData(),
+                collaboratori: getCollaboratoriData(),
+                assegnazioni: getAssegnazioniData(),
+                storico: getStoricoData()
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = JSON.parse(e.target.result);
+                setCaseData(data.case);
+                setCollaboratoriData(data.collaboratori);
+                setAssegnazioniData(data.assegnazioni);
+                setStoricoData(data.storico);
+            };
+            reader.readAsText(file);
+        }
+
+        function setDataPath() {
+            // Implement the logic to set the data path if needed
+        }
+
+        function getCaseData() {
+            const caseData = [];
+            const rows = document.querySelectorAll('#caseTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                caseData.push({
+                    id: row.getAttribute('data-id'),
+                    nome: cells[0].innerText,
+                    chiaviInUfficio: cells[1].innerText,
+                    chiaviInCasa: cells[2].innerText
+                });
+            });
+            return caseData;
+        }
+
+        function getCollaboratoriData() {
+            const collaboratoriData = [];
+            const rows = document.querySelectorAll('#collaboratoriTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                collaboratoriData.push({
+                    id: row.getAttribute('data-id'),
+                    nome: cells[0].innerText
+                });
+            });
+            return collaboratoriData;
+        }
+
+        function getAssegnazioniData() {
+            const assegnazioniData = [];
+            const rows = document.querySelectorAll('#assegnazioniTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                assegnazioniData.push({
+                    id: cells[0].innerText,
+                    casa: cells[1].innerText,
+                    collaboratore: cells[2].innerText,
+                    dataAssegnazione: cells[3].innerText,
+                    quantitaAssegnata: cells[4].innerText
+                });
+            });
+            return assegnazioniData;
+        }
+
+        function getStoricoData() {
+            const storicoData = [];
+            const rows = document.querySelectorAll('#storicoTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                storicoData.push({
+                    id: cells[0].innerText,
+                    casa: cells[1].innerText,
+                    collaboratore: cells[2].innerText,
+                    dataAssegnazione: cells[3].innerText,
+                    dataRiconsegna: cells[4].innerText
+                });
+            });
+            return storicoData;
+        }
+
+        function setCaseData(data) {
+            const tbody = document.querySelector('#caseTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(casa => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', casa.id);
+                row.innerHTML = `
+                    <td>${casa.nome}</td>
+                    <td>${casa.chiaviInUfficio}</td>
+                    <td>${casa.chiaviInCasa}</td>
+                    <td>
+                        <button onclick="editCasa('${casa.id}')">Modifica</button>
+                        <button onclick="deleteCasa('${casa.id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setCollaboratoriData(data) {
+            const tbody = document.querySelector('#collaboratoriTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(collaboratore => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', collaboratore.id);
+                row.innerHTML = `
+                    <td>${collaboratore.nome}</td>
+                    <td>
+                        <button onclick="deleteCollaboratore('${collaboratore.id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setAssegnazioniData(data) {
+            const tbody = document.querySelector('#assegnazioniTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(assegnazione => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${assegnazione.id}</td>
+                    <td>${assegnazione.casa}</td>
+                    <td>${assegnazione.collaboratore}</td>
+                    <td>${assegnazione.dataAssegnazione}</td>
+                    <td>${assegnazione.quantitaAssegnata}</td>
+                    <td>
+                        <button onclick="returnKey('${assegnazione.casa}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setStoricoData(data) {
+            const tbody = document.querySelector('#storicoTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.id}</td>
+                    <td>${record.casa}</td>
+                    <td>${record.collaboratore}</td>
+                    <td>${record.dataAssegnazione}</td>
+                    <td>${record.dataRiconsegna}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function populateDropdowns() {
+            const casaSelect = document.getElementById('casaSelect');
+            const collaboratoreSelect = document.getElementById('collaboratoreSelect');
+            casaSelect.innerHTML = '';
+            collaboratoreSelect.innerHTML = '';
+
+            const caseData = getCaseData();
+            const collaboratoriData = getCollaboratoriData();
+
+            caseData.forEach(casa => {
+                const option = document.createElement('option');
+                option.value = casa.id;
+                option.text = casa.nome;
+                casaSelect.appendChild(option);
+            });
+
+            collaboratoriData.forEach(collaboratore => {
+                const option = document.createElement('option');
+                option.value = collaboratore.id;
+                option.text = collaboratore.nome;
+                collaboratoreSelect.appendChild(option);
+            });
+        }
+
+        function filterStorico() {
+            const searchValue = document.getElementById('searchCasa').value.toLowerCase();
+            const rows = document.querySelectorAll('#storicoTable tbody tr');
+            rows.forEach(row => {
+                const casa = row.querySelectorAll('td')[1].innerText.toLowerCase();
+                row.style.display = casa.includes(searchValue) ? '' : 'none';
+            });
+        }
+
+        function sortStorico(criteria) {
+            const tbody = document.querySelector('#storicoTable tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                const aValue = a.querySelector(`td:nth-child(${getColumnIndex(criteria)})`).innerText;
+                const bValue = b.querySelector(`td:nth-child(${getColumnIndex(criteria)})`).innerText;
+
+                if (criteria === 'dataAssegnazione' || criteria === 'dataRiconsegna') {
+                    return new Date(aValue) - new Date(bValue);
+                }
+                return aValue.localeCompare(bValue);
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function getColumnIndex(criteria) {
+            switch (criteria) {
+                case 'casa':
+                    return 2;
+                case 'collaboratore':
+                    return 3;
+                case 'dataAssegnazione':
+                    return 4;
+                case 'dataRiconsegna':
+                    return 5;
+                default:
+                    return 1;
+            }
+        }
+
+        function sortTableAlphabetically(tableId) {
+            const tbody = document.querySelector(`${tableId} tbody`);
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                const aValue = a.querySelector('td').innerText.toLowerCase();
+                const bValue = b.querySelector('td').innerText.toLowerCase();
+                return aValue.localeCompare(bValue);
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function handleKeyPress(event, callback) {
+            if (event.key === 'Enter') {
+                callback();
+            }
+        }
+
+        function loadCaseFromExcel(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                json.forEach((row, index) => {
+                    if (index === 0) return; // Skip header row
+                    const [nome, chiaviInUfficio, chiaviInCasa] = row;
+                    if (nome && chiaviInUfficio && chiaviInCasa) {
+                        const id = Date.now().toString() + index; // Generate a unique ID
+                        const tbody = document.querySelector('#caseTable tbody');
+                        const tableRow = document.createElement('tr');
+                        tableRow.setAttribute('data-id', id);
+                        tableRow.innerHTML = `
+                            <td>${nome}</td>
+                            <td>${chiaviInUfficio}</td>
+                            <td>${chiaviInCasa}</td>
+                            <td>
+                                <button onclick="editCasa('${id}')">Modifica</button>
+                                <button onclick="deleteCasa('${id}')">Cancella</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tableRow);
+                    }
+                });
+
+                sortTableAlphabetically('#caseTable');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
