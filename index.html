@@ -181,6 +181,500 @@
                 tbody.appendChild(row);
             });
         }
+
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                page.style.display = page.id === pageId ? 'block' : 'none';
+            });
+        }
+
+        function showAddCasaForm() {
+            document.getElementById('addCasaForm').style.display = 'block';
+        }
+
+        function addCasa() {
+            const nome = document.getElementById('newCasaNome').value;
+
+            if (nome) {
+                const id = Date.now().toString(); // Generate a unique ID based on the current timestamp
+                const tbody = document.querySelector('#caseTable tbody');
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', id);
+                row.innerHTML = `
+                    <td>${nome}</td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td>
+                        <button onclick="editCasa('${id}')">Modifica</button>
+                        <button onclick="deleteCasa('${id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                sortTableAlphabetically('#caseTable');
+
+                document.getElementById('addCasaForm').style.display = 'none';
+                document.getElementById('newCasaNome').value = '';
+            } else {
+                alert('Compila tutti i campi');
+            }
+        }
+
+        function deleteCasa(id) {
+            const row = document.querySelector(`#caseTable tbody tr[data-id="${id}"]`);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function editCasa(id) {
+            const row = document.querySelector(`#caseTable tbody tr[data-id="${id}"]`);
+            if (row) {
+                const cells = row.querySelectorAll('td');
+                const nome = prompt('Modifica Nome:', cells[0].innerText);
+                const chiaviInUfficio = prompt('Modifica Chiavi in Ufficio:', cells[1].innerText);
+                const chiaviInCasa = prompt('Modifica Chiavi in Casa:', cells[2].innerText);
+
+                if (nome !== null) cells[0].innerText = nome;
+                if (chiaviInUfficio !== null) cells[1].innerText = chiaviInUfficio;
+                if (chiaviInCasa !== null) cells[2].innerText = chiaviInCasa;
+            }
+        }
+
+        function showAddCollaboratoreForm() {
+            document.getElementById('addCollaboratoreForm').style.display = 'block';
+        }
+
+        function addCollaboratore() {
+            const nome = document.getElementById('newCollaboratoreNome').value;
+
+            if (nome) {
+                const id = Date.now().toString(); // Generate a unique ID based on the current timestamp
+                const tbody = document.querySelector('#collaboratoriTable tbody');
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', id);
+                row.innerHTML = `
+                    <td>${nome}</td>
+                    <td>
+                        <button onclick="deleteCollaboratore('${id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                sortTableAlphabetically('#collaboratoriTable');
+
+                document.getElementById('addCollaboratoreForm').style.display = 'none';
+                document.getElementById('newCollaboratoreNome').value = '';
+            } else {
+                alert('Compila tutti i campi');
+            }
+        }
+
+        function deleteCollaboratore(id) {
+            const row = document.querySelector(`#collaboratoriTable tbody tr[data-id="${id}"]`);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function showAssegnaChiaveForm() {
+            populateDropdowns();
+            document.getElementById('assegnaChiaveForm').style.display = 'block';
+        }
+
+        function assegnaChiave() {
+            const casaSelect = document.getElementById('casaSelect');
+            const collaboratoreSelect = document.getElementById('collaboratoreSelect');
+            const quantitaAssegnata = document.getElementById('quantitaAssegnata').value;
+            const dataAssegnazione = new Date().toLocaleString();
+
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaSelect.value}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                if (parseInt(chiaviInUfficioCell.innerText) === 0) {
+                    alert('CHIAVI ESAURITE');
+                    return;
+                }
+            }
+
+            const reportContent = `
+                <p>Casa: ${casaSelect.options[casaSelect.selectedIndex].text}</p>
+                <p>Collaboratore: ${collaboratoreSelect.options[collaboratoreSelect.selectedIndex].text}</p>
+                <p>Data Assegnazione: ${dataAssegnazione}</p>
+                <p>Quantità Assegnata: ${quantitaAssegnata}</p>
+                <button onclick="convalidaAssegnazione('${casaSelect.value}', '${collaboratoreSelect.value}', '${dataAssegnazione}', ${quantitaAssegnata})">Convalida</button>
+            `;
+            document.getElementById('reportContent').innerHTML = reportContent;
+            document.getElementById('reportSection').style.display = 'block';
+
+            document.getElementById('assegnaChiaveForm').style.display = 'none';
+        }
+
+        function convalidaAssegnazione(casaId, collaboratoreId, dataAssegnazione, quantitaAssegnata) {
+            const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${Date.now()}</td>
+                <td>${document.querySelector(`#casaSelect option[value="${casaId}"]`).text}</td>
+                <td>${document.querySelector(`#collaboratoreSelect option[value="${collaboratoreId}"]`).text}</td>
+                <td>${dataAssegnazione}</td>
+                <td>${quantitaAssegnata}</td>
+                <td>
+                    <button onclick="returnKey('${casaId}', '${dataAssegnazione}')">Riconsegna</button>
+                </td>
+            `;
+            assegnazioniTable.appendChild(row);
+
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) - quantitaAssegnata;
+            }
+
+            const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
+            const storicoRow = document.createElement('tr');
+            storicoRow.innerHTML = `
+                <td>${Date.now()}</td>
+                <td>${document.querySelector(`#casaSelect option[value="${casaId}"]`).text}</td>
+                <td>${document.querySelector(`#collaboratoreSelect option[value="${collaboratoreId}"]`).text}</td>
+                <td>${dataAssegnazione}</td>
+                <td></td>
+            `;
+            storicoTable.appendChild(storicoRow);
+
+            document.getElementById('reportSection').style.display = 'none';
+        }
+
+        function returnKey(casaId, dataAssegnazione) {
+            // Find casa name from the case table directly
+            let casaNome = "";
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
+                casaNome = casaRow.querySelectorAll('td')[0].innerText;
+            }
+            
+            // Store the casa name to use in the subsequent operations
+            if (casaNome === "") {
+                // Fallback: try to find casa name from assegnazioni table
+                const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
+                const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
+                assegnazioniRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells[3].innerText === dataAssegnazione) {
+                        casaNome = cells[1].innerText;
+                    }
+                });
+            }
+
+            // Update the storico table
+            const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
+            const rows = storicoTable.querySelectorAll('tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells[1].innerText === casaNome && cells[3].innerText === dataAssegnazione) {
+                    cells[4].innerText = new Date().toLocaleString();
+                }
+            });
+
+            // Remove the returned key's record from the "assegnazioni" section
+            const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
+            const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
+            assegnazioniRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells[1].innerText === casaNome && cells[3].innerText === dataAssegnazione) {
+                    row.remove();
+                }
+            });
+
+            // Save the updated data to local storage
+            saveToLocalStorage();
+        }
+
+        function exportData() {
+            const data = {
+                case: getCaseData(),
+                collaboratori: getCollaboratoriData(),
+                assegnazioni: getAssegnazioniData(),
+                storico: getStoricoData()
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = JSON.parse(e.target.result);
+                setCaseData(data.case);
+                setCollaboratoriData(data.collaboratori);
+                setAssegnazioniData(data.assegnazioni);
+                setStoricoData(data.storico);
+            };
+            reader.readAsText(file);
+        }
+
+        function setDataPath() {
+            // Implement the logic to set the data path if needed
+        }
+
+        function getCaseData() {
+            const caseData = [];
+            const rows = document.querySelectorAll('#caseTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                caseData.push({
+                    id: row.getAttribute('data-id'),
+                    nome: cells[0].innerText,
+                    chiaviInUfficio: cells[1].innerText,
+                    chiaviInCasa: cells[2].innerText
+                });
+            });
+            return caseData;
+        }
+
+        function getCollaboratoriData() {
+            const collaboratoriData = [];
+            const rows = document.querySelectorAll('#collaboratoriTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                collaboratoriData.push({
+                    id: row.getAttribute('data-id'),
+                    nome: cells[0].innerText
+                });
+            });
+            return collaboratoriData;
+        }
+
+        function getAssegnazioniData() {
+            const assegnazioniData = [];
+            const rows = document.querySelectorAll('#assegnazioniTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                assegnazioniData.push({
+                    id: cells[0].innerText,
+                    casa: cells[1].innerText,
+                    collaboratore: cells[2].innerText,
+                    dataAssegnazione: cells[3].innerText,
+                    quantitaAssegnata: cells[4].innerText
+                });
+            });
+            return assegnazioniData;
+        }
+
+        function getStoricoData() {
+            const storicoData = [];
+            const rows = document.querySelectorAll('#storicoTable tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                storicoData.push({
+                    id: cells[0].innerText,
+                    casa: cells[1].innerText,
+                    collaboratore: cells[2].innerText,
+                    dataAssegnazione: cells[3].innerText,
+                    dataRiconsegna: cells[4].innerText
+                });
+            });
+            return storicoData;
+        }
+
+        function setCaseData(data) {
+            const tbody = document.querySelector('#caseTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(casa => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', casa.id);
+                row.innerHTML = `
+                    <td>${casa.nome}</td>
+                    <td>${casa.chiaviInUfficio}</td>
+                    <td>${casa.chiaviInCasa}</td>
+                    <td>
+                        <button onclick="editCasa('${casa.id}')">Modifica</button>
+                        <button onclick="deleteCasa('${casa.id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setCollaboratoriData(data) {
+            const tbody = document.querySelector('#collaboratoriTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(collaboratore => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', collaboratore.id);
+                row.innerHTML = `
+                    <td>${collaboratore.nome}</td>
+                    <td>
+                        <button onclick="deleteCollaboratore('${collaboratore.id}')">Cancella</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setAssegnazioniData(data) {
+            const tbody = document.querySelector('#assegnazioniTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(assegnazione => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${assegnazione.id}</td>
+                    <td>${assegnazione.casa}</td>
+                    <td>${assegnazione.collaboratore}</td>
+                    <td>${assegnazione.dataAssegnazione}</td>
+                    <td>${assegnazione.quantitaAssegnata}</td>
+                    <td>
+                        <button onclick="returnKey('${assegnazione.casa}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function setStoricoData(data) {
+            const tbody = document.querySelector('#storicoTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.id}</td>
+                    <td>${record.casa}</td>
+                    <td>${record.collaboratore}</td>
+                    <td>${record.dataAssegnazione}</td>
+                    <td>${record.dataRiconsegna}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function populateDropdowns() {
+            const casaSelect = document.getElementById('casaSelect');
+            const collaboratoreSelect = document.getElementById('collaboratoreSelect');
+            casaSelect.innerHTML = '';
+            collaboratoreSelect.innerHTML = '';
+
+            const caseData = getCaseData();
+            const collaboratoriData = getCollaboratoriData();
+
+            caseData.forEach(casa => {
+                const option = document.createElement('option');
+                option.value = casa.id;
+                option.text = casa.nome;
+                casaSelect.appendChild(option);
+            });
+
+            collaboratoriData.forEach(collaboratore => {
+                const option = document.createElement('option');
+                option.value = collaboratore.id;
+                option.text = collaboratore.nome;
+                collaboratoreSelect.appendChild(option);
+            });
+        }
+
+        function filterStorico() {
+            const searchValue = document.getElementById('searchCasa').value.toLowerCase();
+            const rows = document.querySelectorAll('#storicoTable tbody tr');
+            rows.forEach(row => {
+                const casa = row.querySelectorAll('td')[1].innerText.toLowerCase();
+                row.style.display = casa.includes(searchValue) ? '' : 'none';
+            });
+        }
+
+        function sortStorico(criteria) {
+            const tbody = document.querySelector('#storicoTable tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                const aValue = a.querySelector(`td:nth-child(${getColumnIndex(criteria)})`).innerText;
+                const bValue = b.querySelector(`td:nth-child(${getColumnIndex(criteria)})`).innerText;
+
+                if (criteria === 'dataAssegnazione' || criteria === 'dataRiconsegna') {
+                    return new Date(aValue) - new Date(bValue);
+                }
+                return aValue.localeCompare(bValue);
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function getColumnIndex(criteria) {
+            switch (criteria) {
+                case 'casa':
+                    return 2;
+                case 'collaboratore':
+                    return 3;
+                case 'dataAssegnazione':
+                    return 4;
+                case 'dataRiconsegna':
+                    return 5;
+                default:
+                    return 1;
+            }
+        }
+
+        function sortTableAlphabetically(tableId) {
+            const tbody = document.querySelector(`${tableId} tbody`);
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                const aValue = a.querySelector('td').innerText.toLowerCase();
+                const bValue = b.querySelector('td').innerText.toLowerCase();
+                return aValue.localeCompare(bValue);
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function handleKeyPress(event, callback) {
+            if (event.key === 'Enter') {
+                callback();
+            }
+        }
+
+        function loadCaseFromExcel(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                json.forEach((row, index) => {
+                    if (index === 0) return; // Skip header row
+                    const [nome, chiaviInUfficio, chiaviInCasa] = row;
+                    if (nome && chiaviInUfficio && chiaviInCasa) {
+                        const id = Date.now().toString() + index; // Generate a unique ID
+                        const tbody = document.querySelector('#caseTable tbody');
+                        const tableRow = document.createElement('tr');
+                        tableRow.setAttribute('data-id', id);
+                        tableRow.innerHTML = `
+                            <td>${nome}</td>
+                            <td>${chiaviInUfficio}</td>
+                            <td>${chiaviInCasa}</td>
+                            <td>
+                                <button onclick="editCasa('${id}')">Modifica</button>
+                                <button onclick="deleteCasa('${id}')">Cancella</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tableRow);
+                    }
+                });
+
+                sortTableAlphabetically('#caseTable');
+            };
+            reader.readAsArrayBuffer(file);
+        }
     </script>
 </head>
 <body>
@@ -451,7 +945,7 @@
 
             const reportContent = `
                 <p>Casa: ${casaSelect.options[casaSelect.selectedIndex].text}</p>
-                <p>Collaboratore: ${collaboratoreSelect.options[collaboratoreSelect.selectedIndex].text}</p>
+                <p>Collaboratore: ${collaboratoreSelect.options[casaSelect.selectedIndex].text}</p>
                 <p>Data Assegnazione: ${dataAssegnazione}</p>
                 <p>Quantità Assegnata: ${quantitaAssegnata}</p>
                 <button onclick="convalidaAssegnazione('${casaSelect.value}', '${collaboratoreSelect.value}', '${dataAssegnazione}', ${quantitaAssegnata})">Convalida</button>
@@ -498,17 +992,34 @@
         }
 
         function returnKey(casaId, dataAssegnazione) {
+            // Find casa name from the case table directly
+            let casaNome = "";
             const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
             if (casaRow) {
                 const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
                 chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
+                casaNome = casaRow.querySelectorAll('td')[0].innerText;
+            }
+            
+            // Store the casa name to use in the subsequent operations
+            if (casaNome === "") {
+                // Fallback: try to find casa name from assegnazioni table
+                const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
+                const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
+                assegnazioniRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells[3].innerText === dataAssegnazione) {
+                        casaNome = cells[1].innerText;
+                    }
+                });
             }
 
+            // Update the storico table
             const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
             const rows = storicoTable.querySelectorAll('tr');
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells[1].innerText === document.querySelector(`#casaSelect option[value="${casaId}"]`).text && cells[3].innerText === dataAssegnazione) {
+                if (cells[1].innerText === casaNome && cells[3].innerText === dataAssegnazione) {
                     cells[4].innerText = new Date().toLocaleString();
                 }
             });
@@ -518,10 +1029,13 @@
             const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
             assegnazioniRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells[1].innerText === document.querySelector(`#casaSelect option[value="${casaId}"]`).text && cells[3].innerText === dataAssegnazione) {
+                if (cells[1].innerText === casaNome && cells[3].innerText === dataAssegnazione) {
                     row.remove();
                 }
             });
+
+            // Save the updated data to local storage
+            saveToLocalStorage();
         }
 
         function exportData() {
