@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Chiavi in Magazzino</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Add empty favicon to prevent favicon.ico 404 requests -->
+    <link rel="icon" href="data:,">
     <style>
         .centered-text {
             text-align: center;
@@ -945,7 +947,7 @@
 
             const reportContent = `
                 <p>Casa: ${casaSelect.options[casaSelect.selectedIndex].text}</p>
-                <p>Collaboratore: ${collaboratoreSelect.options[casaSelect.selectedIndex].text}</p>
+                <p>Collaboratore: ${collaboratoreSelect.options[collaboratoreSelect.selectedIndex].text}</p>
                 <p>Data Assegnazione: ${dataAssegnazione}</p>
                 <p>Quantità Assegnata: ${quantitaAssegnata}</p>
                 <button onclick="convalidaAssegnazione('${casaSelect.value}', '${collaboratoreSelect.value}', '${dataAssegnazione}', ${quantitaAssegnata})">Convalida</button>
