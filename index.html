@@ -117,20 +117,25 @@
         function setCaseData(data) {
             const tbody = document.querySelector('#caseTable tbody');
             tbody.innerHTML = '';
-            data.forEach(casa => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-id', casa.id);
-                row.innerHTML = `
-                    <td>${casa.nome}</td>
-                    <td>${casa.chiaviInUfficio}</td>
-                    <td>${casa.chiaviInCasa}</td>
-                    <td>
-                        <button onclick="editCasa('${casa.id}')">Modifica</button>
-                        <button onclick="deleteCasa('${casa.id}')">Cancella</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
+            // Verifica che data.cases sia definito e sia un array
+            if (data && Array.isArray(data)) {
+                data.forEach(caseData => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', caseData.id);
+                    row.innerHTML = `
+                        <td>${caseData.nome}</td>
+                        <td>${caseData.chiaviInUfficio}</td>
+                        <td>${caseData.chiaviInCasa}</td>
+                        <td>
+                            <button onclick="editCasa('${caseData.id}')">Modifica</button>
+                            <button onclick="deleteCasa('${caseData.id}')">Cancella</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                console.error("data.cases is not an array or is undefined");
+            }
         }
 
         function setCollaboratoriData(data) {
@@ -153,6 +158,9 @@
             const tbody = document.querySelector('#assegnazioniTable tbody');
             tbody.innerHTML = '';
             data.forEach(assegnazione => {
+                // Cerca l'ID della casa dal nome
+                const casaId = findCasaIdByName(assegnazione.casa);
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${assegnazione.id}</td>
@@ -161,11 +169,24 @@
                     <td>${assegnazione.dataAssegnazione}</td>
                     <td>${assegnazione.quantitaAssegnata}</td>
                     <td>
-                        <button onclick="returnKey('${assegnazione.casa}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
+                        <button onclick="returnKey('${casaId}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        // Funzione per trovare l'ID di una casa dal nome
+        function findCasaIdByName(casaNome) {
+            const rows = document.querySelectorAll('#caseTable tbody tr');
+            for (const row of rows) {
+                const cells = row.querySelectorAll('td');
+                if (cells[0].innerText === casaNome) {
+                    return row.getAttribute('data-id');
+                }
+            }
+            console.error(`Casa con nome ${casaNome} non trovata.`);
+            return casaNome; // Fallback to using the name as ID
         }
 
         function setStoricoData(data) {
@@ -302,7 +323,7 @@
 
             const reportContent = `
                 <p>Casa: ${casaSelect.options[casaSelect.selectedIndex].text}</p>
-                <p>Collaboratore: ${collaboratoreSelect.options[collaboratoreSelect.selectedIndex].text}</p>
+                <p>Collaboratore: ${collaboratoreSelect.options[casaSelect.selectedIndex].text}</p>
                 <p>Data Assegnazione: ${dataAssegnazione}</p>
                 <p>Quantità Assegnata: ${quantitaAssegnata}</p>
                 <button onclick="convalidaAssegnazione('${casaSelect.value}', '${collaboratoreSelect.value}', '${dataAssegnazione}', ${quantitaAssegnata})">Convalida</button>
@@ -353,25 +374,26 @@
             let casaNome = "";
             const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
             if (casaRow) {
-                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
-                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
                 casaNome = casaRow.querySelectorAll('td')[0].innerText;
+                
+                // Update the storico table
+                updateStorico(casaNome, dataAssegnazione);
+                
+                // Remove the returned key's record from the "assegnazioni" section
+                removeAssegnazione(casaNome, dataAssegnazione);
+                
+                // Incrementa le chiavi in ufficio
+                incrementaChiaviInUfficio(casaId);
+                
+                // Save the updated data to local storage
+                saveToLocalStorage();
+            } else {
+                console.error(`Casa con ID ${casaId} non trovata.`);
             }
-            
-            // Store the casa name to use in the subsequent operations
-            if (casaNome === "") {
-                // Fallback: try to find casa name from assegnazioni table
-                const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
-                const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
-                assegnazioniRows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells[3].innerText === dataAssegnazione) {
-                        casaNome = cells[1].innerText;
-                    }
-                });
-            }
+        }
 
-            // Update the storico table
+        // Funzione per aggiornare lo storico
+        function updateStorico(casaNome, dataAssegnazione) {
             const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
             const rows = storicoTable.querySelectorAll('tr');
             rows.forEach(row => {
@@ -380,8 +402,10 @@
                     cells[4].innerText = new Date().toLocaleString();
                 }
             });
+        }
 
-            // Remove the returned key's record from the "assegnazioni" section
+        // Funzione per rimuovere l'assegnazione
+        function removeAssegnazione(casaNome, dataAssegnazione) {
             const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
             const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
             assegnazioniRows.forEach(row => {
@@ -390,9 +414,31 @@
                     row.remove();
                 }
             });
+        }
 
-            // Save the updated data to local storage
-            saveToLocalStorage();
+        // Funzione per incrementare le chiavi in ufficio
+        function incrementaChiaviInUfficio(casaId) {
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                console.log(`Chiavi in ufficio prima dell'incremento: ${chiaviInUfficioCell.innerText}`);
+                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
+                console.log(`Chiavi in ufficio dopo l'incremento: ${chiaviInUfficioCell.innerText}`);
+            } else {
+                console.error(`Casa con ID ${casaId} non trovata.`);
+            }
+        }
+
+        // Funzione per aggiornare le chiavi in ufficio dopo il caricamento di un file di archivio
+        function aggiornaChiaviInUfficio() {
+            const caseData = getCaseData();
+            caseData.forEach(casa => {
+                const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casa.id}"]`);
+                if (casaRow) {
+                    const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                    chiaviInUfficioCell.innerText = casa.chiaviInUfficio;
+                }
+            });
         }
 
         function exportData() {
@@ -420,6 +466,8 @@
                 setCollaboratoriData(data.collaboratori);
                 setAssegnazioniData(data.assegnazioni);
                 setStoricoData(data.storico);
+                // Assicurati che le chiavi in ufficio siano aggiornate correttamente
+                aggiornaChiaviInUfficio();
             };
             reader.readAsText(file);
         }
@@ -491,20 +539,25 @@
         function setCaseData(data) {
             const tbody = document.querySelector('#caseTable tbody');
             tbody.innerHTML = '';
-            data.forEach(casa => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-id', casa.id);
-                row.innerHTML = `
-                    <td>${casa.nome}</td>
-                    <td>${casa.chiaviInUfficio}</td>
-                    <td>${casa.chiaviInCasa}</td>
-                    <td>
-                        <button onclick="editCasa('${casa.id}')">Modifica</button>
-                        <button onclick="deleteCasa('${casa.id}')">Cancella</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
+            // Verifica che data.cases sia definito e sia un array
+            if (data && Array.isArray(data)) {
+                data.forEach(caseData => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', caseData.id);
+                    row.innerHTML = `
+                        <td>${caseData.nome}</td>
+                        <td>${caseData.chiaviInUfficio}</td>
+                        <td>${caseData.chiaviInCasa}</td>
+                        <td>
+                            <button onclick="editCasa('${caseData.id}')">Modifica</button>
+                            <button onclick="deleteCasa('${caseData.id}')">Cancella</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                console.error("data.cases is not an array or is undefined");
+            }
         }
 
         function setCollaboratoriData(data) {
@@ -527,6 +580,9 @@
             const tbody = document.querySelector('#assegnazioniTable tbody');
             tbody.innerHTML = '';
             data.forEach(assegnazione => {
+                // Cerca l'ID della casa dal nome
+                const casaId = findCasaIdByName(assegnazione.casa);
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${assegnazione.id}</td>
@@ -535,11 +591,24 @@
                     <td>${assegnazione.dataAssegnazione}</td>
                     <td>${assegnazione.quantitaAssegnata}</td>
                     <td>
-                        <button onclick="returnKey('${assegnazione.casa}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
+                        <button onclick="returnKey('${casaId}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        // Funzione per trovare l'ID di una casa dal nome
+        function findCasaIdByName(casaNome) {
+            const rows = document.querySelectorAll('#caseTable tbody tr');
+            for (const row of rows) {
+                const cells = row.querySelectorAll('td');
+                if (cells[0].innerText === casaNome) {
+                    return row.getAttribute('data-id');
+                }
+            }
+            console.error(`Casa con nome ${casaNome} non trovata.`);
+            return casaNome; // Fallback to using the name as ID
         }
 
         function setStoricoData(data) {
@@ -947,7 +1016,7 @@
 
             const reportContent = `
                 <p>Casa: ${casaSelect.options[casaSelect.selectedIndex].text}</p>
-                <p>Collaboratore: ${collaboratoreSelect.options[collaboratoreSelect.selectedIndex].text}</p>
+                <p>Collaboratore: ${collaboratoreSelect.options[casaSelect.selectedIndex].text}</p>
                 <p>Data Assegnazione: ${dataAssegnazione}</p>
                 <p>Quantità Assegnata: ${quantitaAssegnata}</p>
                 <button onclick="convalidaAssegnazione('${casaSelect.value}', '${collaboratoreSelect.value}', '${dataAssegnazione}', ${quantitaAssegnata})">Convalida</button>
@@ -998,25 +1067,26 @@
             let casaNome = "";
             const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
             if (casaRow) {
-                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
-                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
                 casaNome = casaRow.querySelectorAll('td')[0].innerText;
+                
+                // Update the storico table
+                updateStorico(casaNome, dataAssegnazione);
+                
+                // Remove the returned key's record from the "assegnazioni" section
+                removeAssegnazione(casaNome, dataAssegnazione);
+                
+                // Incrementa le chiavi in ufficio
+                incrementaChiaviInUfficio(casaId);
+                
+                // Save the updated data to local storage
+                saveToLocalStorage();
+            } else {
+                console.error(`Casa con ID ${casaId} non trovata.`);
             }
-            
-            // Store the casa name to use in the subsequent operations
-            if (casaNome === "") {
-                // Fallback: try to find casa name from assegnazioni table
-                const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
-                const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
-                assegnazioniRows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells[3].innerText === dataAssegnazione) {
-                        casaNome = cells[1].innerText;
-                    }
-                });
-            }
+        }
 
-            // Update the storico table
+        // Funzione per aggiornare lo storico
+        function updateStorico(casaNome, dataAssegnazione) {
             const storicoTable = document.getElementById('storicoTable').querySelector('tbody');
             const rows = storicoTable.querySelectorAll('tr');
             rows.forEach(row => {
@@ -1025,8 +1095,10 @@
                     cells[4].innerText = new Date().toLocaleString();
                 }
             });
+        }
 
-            // Remove the returned key's record from the "assegnazioni" section
+        // Funzione per rimuovere l'assegnazione
+        function removeAssegnazione(casaNome, dataAssegnazione) {
             const assegnazioniTable = document.getElementById('assegnazioniTable').querySelector('tbody');
             const assegnazioniRows = assegnazioniTable.querySelectorAll('tr');
             assegnazioniRows.forEach(row => {
@@ -1035,9 +1107,31 @@
                     row.remove();
                 }
             });
+        }
 
-            // Save the updated data to local storage
-            saveToLocalStorage();
+        // Funzione per incrementare le chiavi in ufficio
+        function incrementaChiaviInUfficio(casaId) {
+            const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casaId}"]`);
+            if (casaRow) {
+                const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                console.log(`Chiavi in ufficio prima dell'incremento: ${chiaviInUfficioCell.innerText}`);
+                chiaviInUfficioCell.innerText = parseInt(chiaviInUfficioCell.innerText) + 1;
+                console.log(`Chiavi in ufficio dopo l'incremento: ${chiaviInUfficioCell.innerText}`);
+            } else {
+                console.error(`Casa con ID ${casaId} non trovata.`);
+            }
+        }
+
+        // Funzione per aggiornare le chiavi in ufficio dopo il caricamento di un file di archivio
+        function aggiornaChiaviInUfficio() {
+            const caseData = getCaseData();
+            caseData.forEach(casa => {
+                const casaRow = document.querySelector(`#caseTable tbody tr[data-id="${casa.id}"]`);
+                if (casaRow) {
+                    const chiaviInUfficioCell = casaRow.querySelectorAll('td')[1];
+                    chiaviInUfficioCell.innerText = casa.chiaviInUfficio;
+                }
+            });
         }
 
         function exportData() {
@@ -1065,6 +1159,8 @@
                 setCollaboratoriData(data.collaboratori);
                 setAssegnazioniData(data.assegnazioni);
                 setStoricoData(data.storico);
+                // Assicurati che le chiavi in ufficio siano aggiornate correttamente
+                aggiornaChiaviInUfficio();
             };
             reader.readAsText(file);
         }
@@ -1136,20 +1232,25 @@
         function setCaseData(data) {
             const tbody = document.querySelector('#caseTable tbody');
             tbody.innerHTML = '';
-            data.forEach(casa => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-id', casa.id);
-                row.innerHTML = `
-                    <td>${casa.nome}</td>
-                    <td>${casa.chiaviInUfficio}</td>
-                    <td>${casa.chiaviInCasa}</td>
-                    <td>
-                        <button onclick="editCasa('${casa.id}')">Modifica</button>
-                        <button onclick="deleteCasa('${casa.id}')">Cancella</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
+            // Verifica che data.cases sia definito e sia un array
+            if (data && Array.isArray(data)) {
+                data.forEach(caseData => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', caseData.id);
+                    row.innerHTML = `
+                        <td>${caseData.nome}</td>
+                        <td>${caseData.chiaviInUfficio}</td>
+                        <td>${caseData.chiaviInCasa}</td>
+                        <td>
+                            <button onclick="editCasa('${caseData.id}')">Modifica</button>
+                            <button onclick="deleteCasa('${caseData.id}')">Cancella</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                console.error("data.cases is not an array or is undefined");
+            }
         }
 
         function setCollaboratoriData(data) {
@@ -1172,6 +1273,9 @@
             const tbody = document.querySelector('#assegnazioniTable tbody');
             tbody.innerHTML = '';
             data.forEach(assegnazione => {
+                // Cerca l'ID della casa dal nome
+                const casaId = findCasaIdByName(assegnazione.casa);
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${assegnazione.id}</td>
@@ -1180,11 +1284,24 @@
                     <td>${assegnazione.dataAssegnazione}</td>
                     <td>${assegnazione.quantitaAssegnata}</td>
                     <td>
-                        <button onclick="returnKey('${assegnazione.casa}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
+                        <button onclick="returnKey('${casaId}', '${assegnazione.dataAssegnazione}')">Riconsegna</button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        // Funzione per trovare l'ID di una casa dal nome
+        function findCasaIdByName(casaNome) {
+            const rows = document.querySelectorAll('#caseTable tbody tr');
+            for (const row of rows) {
+                const cells = row.querySelectorAll('td');
+                if (cells[0].innerText === casaNome) {
+                    return row.getAttribute('data-id');
+                }
+            }
+            console.error(`Casa con nome ${casaNome} non trovata.`);
+            return casaNome; // Fallback to using the name as ID
         }
 
         function setStoricoData(data) {
